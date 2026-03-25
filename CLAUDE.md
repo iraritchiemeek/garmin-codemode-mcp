@@ -10,25 +10,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-This is a Cloudflare Worker that serves an MCP server using the Code Mode pattern. Instead of exposing one MCP tool per API endpoint, it uses `openApiMcpServer` from `@cloudflare/codemode/mcp` to generate two tools — `search` and `execute` — that let LLMs discover and call the entire Garmin Connect API in ~1,000 tokens.
+This is a Cloudflare Worker that serves an MCP server using the Code Mode pattern. Individual Garmin API tools are registered on an `McpServer`, then wrapped with `codeMcpServer` from `@cloudflare/codemode/mcp` which collapses them into a single `code` tool. The LLM writes JavaScript that chains multiple tool calls, and that code runs in a Dynamic Worker sandbox.
 
 ### Request flow
 
 1. MCP client sends a request to the Worker
 2. `createMcpHandler` (from `agents/mcp`) handles MCP Streamable HTTP transport
-3. `openApiMcpServer` receives tool calls and delegates to `DynamicWorkerExecutor`
-4. The executor spins up an isolated V8 sandbox (Dynamic Worker) via the `env.LOADER` binding
-5. LLM-generated code runs inside the sandbox with `globalOutbound: null` (no network access)
-6. API calls from the sandbox are proxied through the host-side `request` callback, which injects auth and makes the real `fetch()`
-7. Only the final return value exits the sandbox
+3. `codeMcpServer` wraps the base `McpServer`'s tools into a single `code` tool
+4. The LLM writes JS that calls typed `codemode.*` methods (e.g. `codemode.list_activities()`)
+5. `DynamicWorkerExecutor` spins up an isolated V8 sandbox via `env.LOADER`
+6. Inside the sandbox, `codemode.*` calls are routed back to the host via RPC
+7. Each tool's `execute` runs host-side with access to `env.GARMIN_API_TOKEN`
+8. Only the final return value exits the sandbox
 
 ### Security boundary
 
-The `request` callback in `src/index.ts` is the auth injection point. Garmin credentials (`env.GARMIN_API_TOKEN`) never enter the sandbox — they are added host-side. The sandbox can only interact with the host through the `request` bridge provided by `openApiMcpServer`.
+Tool `execute` callbacks run on the host, not in the sandbox. Garmin credentials (`env.GARMIN_API_TOKEN`) never enter the sandbox. The sandbox can only interact with the host through the typed `codemode.*` methods that `codeMcpServer` generates from the registered tools.
+
+### Adding tools
+
+Tools are registered on the base `McpServer` in `src/index.ts` via `server.registerTool()` with Zod input schemas. Each tool's execute function calls the Garmin API host-side. Group tools into separate modules under `src/tools/` as the surface grows.
 
 ### Dependency note
 
-`@modelcontextprotocol/sdk` is not a direct dependency — `agents` brings it in. Do not add it to `package.json` unless you need direct imports; version mismatches with the `agents` internal copy cause type errors due to private fields in `McpServer`.
+`@modelcontextprotocol/sdk` is pinned to `1.26.0` to match the version `agents` bundles internally. A mismatch causes type errors due to private fields in `McpServer`.
 
 ## Wrangler config
 
@@ -38,4 +43,4 @@ The `request` callback in `src/index.ts` is the auth injection point. Garmin cre
 
 ## Current state
 
-`src/spec.json` is a placeholder with empty `paths`. It needs to be populated with actual Garmin Connect API endpoints for `search` and `execute` to be functional. Garmin uses OAuth 1.0a, so the auth scheme in the `request` callback will also need updating.
+The `codeMcpServer` wiring is in place but no Garmin tools are registered yet. Next step is defining tool modules with actual Garmin API endpoints. Garmin uses OAuth 1.0a, so the auth scheme will also need updating from the current Bearer token placeholder.
