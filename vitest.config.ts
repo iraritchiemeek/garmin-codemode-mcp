@@ -2,6 +2,9 @@ import { cloudflareTest } from "@cloudflare/vitest-pool-workers";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  test: {
+    exclude: ["test/integration/**", "node_modules/**"],
+  },
   plugins: [
     cloudflareTest({
       // Don't reference wrangler.jsonc — it declares worker_loaders which

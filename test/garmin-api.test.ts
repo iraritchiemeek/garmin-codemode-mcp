@@ -138,6 +138,145 @@ describe("GarminApi", () => {
     });
   });
 
+  describe("post()", () => {
+    it("sends POST method with JSON body", async () => {
+      const api = new GarminApi(VALID_OAUTH1, validOAuth2());
+      const body = { workoutName: "Tempo Run", sportType: "running" };
+      mockFetch.mockResolvedValueOnce(jsonResponse({ workoutId: "456" }));
+
+      const result = await api.post("/workout-service/workout", body);
+
+      expect(result).toEqual({ workoutId: "456" });
+      expect(mockFetch).toHaveBeenCalledOnce();
+      const call = mockFetch.mock.calls[0];
+      const init = call[1]!;
+      expect(init.method).toBe("POST");
+      expect((init.headers as Record<string, string>)["Content-Type"]).toBe(
+        "application/json",
+      );
+      expect(init.body).toBe(JSON.stringify(body));
+    });
+
+    it("sends POST without body when body is undefined", async () => {
+      const api = new GarminApi(VALID_OAUTH1, validOAuth2());
+      mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+      await api.post("/some-endpoint");
+
+      const init = mockFetch.mock.calls[0][1]!;
+      expect(init.method).toBe("POST");
+      expect(init.body).toBeUndefined();
+      expect((init.headers as Record<string, string>)["Content-Type"]).toBeUndefined();
+    });
+
+    it("builds query parameters", async () => {
+      const api = new GarminApi(VALID_OAUTH1, validOAuth2());
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+
+      await api.post("/endpoint", { data: 1 }, { key: "value" });
+
+      const parsed = new URL(callArgs(mockFetch, 0).url);
+      expect(parsed.searchParams.get("key")).toBe("value");
+    });
+
+    it("throws on error response", async () => {
+      const api = new GarminApi(VALID_OAUTH1, validOAuth2());
+      mockFetch.mockResolvedValueOnce(textResponse("Bad Request", 400));
+
+      await expect(api.post("/bad", {})).rejects.toThrow(/400/);
+    });
+
+    it("refreshes expired token before request", async () => {
+      const api = new GarminApi(VALID_OAUTH1, expiredOAuth2());
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ access_token: "fresh", expires_in: 3600 }),
+      );
+      mockFetch.mockResolvedValueOnce(jsonResponse({ created: true }));
+
+      const result = await api.post("/workout", { name: "test" });
+
+      expect(result).toEqual({ created: true });
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      const apiCall = callArgs(mockFetch, 1);
+      expect(apiCall.headers.Authorization).toBe("Bearer fresh");
+    });
+  });
+
+  describe("delete()", () => {
+    it("sends DELETE method", async () => {
+      const api = new GarminApi(VALID_OAUTH1, validOAuth2());
+      mockFetch.mockResolvedValueOnce(
+        new Response(null, { status: 204 }),
+      );
+
+      const result = await api.delete("/workout-service/workout/123");
+
+      expect(result).toBeUndefined();
+      const init = mockFetch.mock.calls[0][1]!;
+      expect(init.method).toBe("DELETE");
+    });
+
+    it("handles JSON response from delete", async () => {
+      const api = new GarminApi(VALID_OAUTH1, validOAuth2());
+      mockFetch.mockResolvedValueOnce(jsonResponse({ deleted: true }));
+
+      const result = await api.delete("/some-resource/456");
+
+      expect(result).toEqual({ deleted: true });
+    });
+
+    it("throws on error response", async () => {
+      const api = new GarminApi(VALID_OAUTH1, validOAuth2());
+      mockFetch.mockResolvedValueOnce(textResponse("Not Found", 404));
+
+      await expect(api.delete("/missing/999")).rejects.toThrow(/404/);
+    });
+
+    it("refreshes expired token before request", async () => {
+      const api = new GarminApi(VALID_OAUTH1, expiredOAuth2());
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ access_token: "fresh", expires_in: 3600 }),
+      );
+      mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+      await api.delete("/workout/123");
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      const apiCall = callArgs(mockFetch, 1);
+      expect(apiCall.headers.Authorization).toBe("Bearer fresh");
+    });
+  });
+
+  describe("getDisplayName()", () => {
+    it("fetches and returns displayName from user settings", async () => {
+      const api = new GarminApi(VALID_OAUTH1, validOAuth2());
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ userData: { displayName: "testuser123" } }),
+      );
+
+      const name = await api.getDisplayName();
+
+      expect(name).toBe("testuser123");
+      const { url } = callArgs(mockFetch, 0);
+      expect(url).toContain("/userprofile-service/userprofile/user-settings");
+    });
+
+    it("caches displayName on subsequent calls", async () => {
+      const api = new GarminApi(VALID_OAUTH1, validOAuth2());
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ userData: { displayName: "cached-user" } }),
+      );
+
+      const first = await api.getDisplayName();
+      const second = await api.getDisplayName();
+
+      expect(first).toBe("cached-user");
+      expect(second).toBe("cached-user");
+      // Only one fetch call — second call used cache
+      expect(mockFetch).toHaveBeenCalledOnce();
+    });
+  });
+
   describe("token refresh", () => {
     it("refreshes expired token before making API call", async () => {
       const api = new GarminApi(VALID_OAUTH1, expiredOAuth2());

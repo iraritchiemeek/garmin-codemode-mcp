@@ -150,4 +150,100 @@ export function registerActivityTools(
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
+
+  server.registerTool(
+    "get_activity_weather",
+    {
+      description:
+        "Get weather conditions during a Garmin activity. Returns temperature, " +
+        "humidity, wind speed/direction, and weather type. Useful for correlating " +
+        "performance with environmental conditions.",
+      inputSchema: {
+        activityId: z
+          .string()
+          .describe("The activity ID"),
+      },
+    },
+    async ({ activityId }) => {
+      const data = await api.get(
+        `/activity-service/activity/${activityId}/weather`,
+      );
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+    },
+  );
+
+  server.registerTool(
+    "get_activity_gear",
+    {
+      description:
+        "Get gear used for a Garmin activity. Returns linked equipment (shoes, " +
+        "bike, etc.) with name, type, and usage stats. Use to track equipment mileage.",
+      inputSchema: {
+        activityId: z
+          .string()
+          .describe("The activity ID"),
+      },
+    },
+    async ({ activityId }) => {
+      const data = await api.get(
+        "/gear-service/gear/filterGear",
+        { activityId },
+      );
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+    },
+  );
+
+  server.registerTool(
+    "get_activities_by_date",
+    {
+      description:
+        "Search activities within a date range. Returns array of activity summaries. " +
+        "Use instead of list_activities when you need activities from a specific period.",
+      inputSchema: {
+        startDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe("Start date in YYYY-MM-DD format"),
+        endDate: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .describe("End date in YYYY-MM-DD format"),
+        activityType: z
+          .string()
+          .optional()
+          .describe(
+            "Filter by activity type key, e.g. 'running', 'hiking', 'swimming'",
+          ),
+      },
+    },
+    async ({ startDate, endDate, activityType }) => {
+      const query: Record<string, string | number> = {
+        startDate,
+        endDate,
+      };
+      if (activityType) query.activityType = activityType;
+
+      const data = await api.get(
+        "/activitylist-service/activities/search/activities",
+        query,
+      );
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+    },
+  );
+
+  server.registerTool(
+    "get_activity_types",
+    {
+      description:
+        "List all Garmin activity types with typeKey and typeId. Use to discover " +
+        "valid activityType filter values for list_activities and get_activities_by_date.",
+      inputSchema: {},
+    },
+    async () => {
+      const data = await api.get(
+        "/activity-service/activity/activityTypes",
+      );
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+    },
+  );
 }

@@ -38,6 +38,7 @@ export class GarminApi {
   private oauth1: OAuth1Credentials;
   private accessToken: string;
   private expiresAt: number;
+  private displayNameCache: string | null = null;
   constructor(oauth1Json: string, oauth2Json: string) {
     const o1 = JSON.parse(oauth1Json);
     this.oauth1 = {
@@ -110,9 +111,11 @@ export class GarminApi {
     return this.accessToken;
   }
 
-  async get<T = unknown>(
+  private async request<T = unknown>(
+    method: string,
     path: string,
     query?: Record<string, string | number>,
+    body?: unknown,
   ): Promise<T> {
     const token = await this.ensureValidToken();
     const url = new URL(path, CONNECT_API_BASE);
@@ -124,21 +127,62 @@ export class GarminApi {
       }
     }
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
-        "User-Agent": USER_AGENT,
-      },
-    });
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "User-Agent": USER_AGENT,
+    };
+    const init: RequestInit = { method, headers };
+
+    if (body !== undefined) {
+      headers["Content-Type"] = "application/json";
+      init.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(url.toString(), init);
 
     if (!response.ok) {
-      const body = await response.text();
+      const text = await response.text();
       throw new Error(
-        `Garmin API ${response.status} ${response.statusText}: ${body}`,
+        `Garmin API ${response.status} ${response.statusText}: ${text}`,
       );
     }
 
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     return response.json() as Promise<T>;
+  }
+
+  async get<T = unknown>(
+    path: string,
+    query?: Record<string, string | number>,
+  ): Promise<T> {
+    return this.request<T>("GET", path, query);
+  }
+
+  async post<T = unknown>(
+    path: string,
+    body?: unknown,
+    query?: Record<string, string | number>,
+  ): Promise<T> {
+    return this.request<T>("POST", path, query, body);
+  }
+
+  async getDisplayName(): Promise<string> {
+    if (this.displayNameCache) return this.displayNameCache;
+    const settings = await this.get<{ userData: { displayName: string } }>(
+      "/userprofile-service/userprofile/user-settings",
+    );
+    this.displayNameCache = settings.userData.displayName;
+    return this.displayNameCache;
+  }
+
+  async delete<T = unknown>(
+    path: string,
+    query?: Record<string, string | number>,
+  ): Promise<T> {
+    return this.request<T>("DELETE", path, query);
   }
 }
