@@ -2,10 +2,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { DynamicWorkerExecutor } from "@cloudflare/codemode";
 import { codeMcpServer } from "@cloudflare/codemode/mcp";
 import { createMcpHandler } from "agents/mcp";
+import { GarminApi } from "./garmin-api.js";
+import { registerActivityTools } from "./tools/activities.js";
 
 export interface Env {
   LOADER: WorkerLoader;
-  GARMIN_API_TOKEN: string;
+  GARMIN_OAUTH1: string;
+  GARMIN_OAUTH2: string;
 }
 
 async function createServer(env: Env) {
@@ -14,7 +17,8 @@ async function createServer(env: Env) {
     version: "1.0.0",
   });
 
-  // TODO: Register Garmin tools on baseServer here
+  const api = new GarminApi(env.GARMIN_OAUTH1, env.GARMIN_OAUTH2);
+  registerActivityTools(baseServer, api);
 
   const executor = new DynamicWorkerExecutor({
     loader: env.LOADER,
