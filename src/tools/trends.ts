@@ -1,6 +1,13 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { GarminApi } from "../garmin-api.js";
+import type {
+  MaxMetricsEntry,
+  StressData,
+  BodyBatteryEntry,
+  DailyStepsEntry,
+  IntensityMinutes,
+} from "../types/garmin-responses.js";
 
 const dateParam = z
   .string()
@@ -25,12 +32,14 @@ export function registerTrendsTools(
     "get_max_metrics",
     {
       description:
-        "Get VO2 max and fitness age for a date. Returns estimated VO2 max " +
-        "(running/cycling), fitness age, and max met values.",
+        "Get VO2 max and fitness age for a date. Returns an array where each entry " +
+        "has generic (with vo2MaxValue, vo2MaxPreciseValue, fitnessAge, " +
+        "fitnessAgeDescription), cycling (same shape or null), and " +
+        "heatAltitudeAcclimation data.",
       inputSchema: { date: dateParam },
     },
     async ({ date }) => {
-      const data = await api.get(
+      const data = await api.get<MaxMetricsEntry[]>(
         `/metrics-service/metrics/maxmet/daily/${date}/${date}`,
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -41,12 +50,13 @@ export function registerTrendsTools(
     "get_stress_data",
     {
       description:
-        "Get all-day stress data for a date. Returns timestamped stress levels " +
-        "(0-100), overall score, and rest/activity breakdown.",
+        "Get all-day stress data for a date. Returns avgStressLevel, maxStressLevel, " +
+        "stressValuesArray (timestamped stress levels 0-100), and " +
+        "bodyBatteryValuesArray.",
       inputSchema: { date: dateParam },
     },
     async ({ date }) => {
-      const data = await api.get(
+      const data = await api.get<StressData>(
         `/wellness-service/wellness/dailyStress/${date}`,
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -57,15 +67,15 @@ export function registerTrendsTools(
     "get_body_battery",
     {
       description:
-        "Get Body Battery levels over a date range. Returns daily charged/drained " +
-        "values and high/low readings. Use for energy trend analysis.",
+        "Get Body Battery levels over a date range. Returns an array where each day " +
+        "has charged, drained, and bodyBatteryValuesArray (timestamped readings).",
       inputSchema: {
         startDate: startDateParam,
         endDate: endDateParam,
       },
     },
     async ({ startDate, endDate }) => {
-      const data = await api.get(
+      const data = await api.get<BodyBatteryEntry[]>(
         "/wellness-service/wellness/bodyBattery/reports/daily",
         { startDate, endDate },
       );
@@ -77,15 +87,15 @@ export function registerTrendsTools(
     "get_daily_steps",
     {
       description:
-        "Get daily step counts over a date range. Returns steps, distance, " +
-        "calories, and active minutes per day.",
+        "Get daily step counts over a date range. Returns an array where each day " +
+        "has totalSteps, totalDistance (meters), and stepGoal.",
       inputSchema: {
         startDate: startDateParam,
         endDate: endDateParam,
       },
     },
     async ({ startDate, endDate }) => {
-      const data = await api.get(
+      const data = await api.get<DailyStepsEntry[]>(
         `/usersummary-service/stats/steps/daily/${startDate}/${endDate}`,
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -96,12 +106,12 @@ export function registerTrendsTools(
     "get_intensity_minutes",
     {
       description:
-        "Get intensity minutes for a date. Returns moderate and vigorous minutes, " +
-        "weekly totals, and goal progress.",
+        "Get intensity minutes for a date. Returns moderateMinutes, vigorousMinutes, " +
+        "weeklyModerate, weeklyVigorous, weeklyTotal, weekGoal, and dayOfGoalMet.",
       inputSchema: { date: dateParam },
     },
     async ({ date }) => {
-      const data = await api.get(
+      const data = await api.get<IntensityMinutes>(
         `/wellness-service/wellness/daily/im/${date}`,
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };

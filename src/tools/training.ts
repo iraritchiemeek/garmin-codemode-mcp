@@ -1,6 +1,14 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { GarminApi } from "../garmin-api.js";
+import type {
+  TrainingPlansResponse,
+  WorkoutSummary,
+  WorkoutDetail,
+  RacePredictions,
+  EnduranceScore,
+  HillScore,
+} from "../types/garmin-responses.js";
 
 const startDateParam = z
   .string()
@@ -22,12 +30,13 @@ export function registerTrainingTools(
     "get_training_plans",
     {
       description:
-        "List all training plans on Garmin Connect. Returns plan names, types, " +
-        "statuses, and IDs. Use before get_training_plan for details.",
+        "List all training plans on Garmin Connect. Returns an object with " +
+        "trainingPlanList (array of plans with names, types, statuses, IDs) " +
+        "and searchFilter. Use before get_training_plan for details.",
       inputSchema: {},
     },
     async () => {
-      const data = await api.get("/trainingplan-service/trainingplan/plans");
+      const data = await api.get<TrainingPlansResponse>("/trainingplan-service/trainingplan/plans");
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -54,8 +63,9 @@ export function registerTrainingTools(
     "get_workouts",
     {
       description:
-        "List workouts in the Garmin workout library. Returns workout names, " +
-        "sport types, and IDs. Use before get_workout for full details.",
+        "List workouts in the Garmin workout library. Returns an array where each " +
+        "element has workoutId, workoutName, sportType, estimatedDurationInSecs, " +
+        "estimatedDistanceInMeters, and shared. Use before get_workout for full details.",
       inputSchema: {
         start: z
           .number()
@@ -77,7 +87,7 @@ export function registerTrainingTools(
       if (start !== undefined) query.start = start;
       if (limit !== undefined) query.limit = limit;
 
-      const data = await api.get("/workout-service/workouts", query);
+      const data = await api.get<WorkoutSummary[]>("/workout-service/workouts", query);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -86,14 +96,15 @@ export function registerTrainingTools(
     "get_workout",
     {
       description:
-        "Get full details for a single workout. Returns workout segments, steps, " +
-        "targets, and sport type.",
+        "Get full details for a single workout. Returns workoutId, workoutName, " +
+        "sportType, workoutSegments (array of segment objects with steps and targets), " +
+        "estimatedDurationInSecs, and estimatedDistanceInMeters.",
       inputSchema: {
         workoutId: z.string().describe("The workout ID"),
       },
     },
     async ({ workoutId }) => {
-      const data = await api.get(`/workout-service/workout/${workoutId}`);
+      const data = await api.get<WorkoutDetail>(`/workout-service/workout/${workoutId}`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -102,13 +113,14 @@ export function registerTrainingTools(
     "get_race_predictions",
     {
       description:
-        "Get race time predictions based on recent training. Returns estimated " +
-        "times for 5K, 10K, half marathon, and marathon.",
+        "Get race time predictions based on recent training. Returns time5K, " +
+        "time10K, timeHalfMarathon, and timeMarathon (all in seconds), plus " +
+        "calendarDate and the prediction date range (fromCalendarDate, toCalendarDate).",
       inputSchema: {},
     },
     async () => {
       const displayName = await api.getDisplayName();
-      const data = await api.get(
+      const data = await api.get<RacePredictions>(
         `/metrics-service/metrics/racepredictions/latest/${displayName}`,
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -119,8 +131,9 @@ export function registerTrainingTools(
     "get_endurance_score",
     {
       description:
-        "Get endurance score over a date range. Returns score trend reflecting " +
-        "aerobic base and training consistency.",
+        "Get endurance score over a date range. Returns avg, max, " +
+        "enduranceScoreDTO (detailed breakdown), and groupMap (scores grouped " +
+        "by the aggregation period).",
       inputSchema: {
         startDate: startDateParam,
         endDate: endDateParam,
@@ -131,7 +144,7 @@ export function registerTrainingTools(
       },
     },
     async ({ startDate, endDate, aggregation }) => {
-      const data = await api.get(
+      const data = await api.get<EnduranceScore>(
         "/metrics-service/metrics/endurancescore/stats",
         { startDate, endDate, aggregation: aggregation ?? "weekly" },
       );
@@ -143,15 +156,16 @@ export function registerTrainingTools(
     "get_hill_score",
     {
       description:
-        "Get hill score over a date range. Returns score trend reflecting " +
-        "climbing ability and vertical training load.",
+        "Get the latest hill score. Returns overallScore, strengthScore, " +
+        "enduranceScore, vo2Max, vo2MaxPreciseValue, and calendarDate. " +
+        "Note: returns a single object (latest score), not a historical trend.",
       inputSchema: {
         startDate: startDateParam,
         endDate: endDateParam,
       },
     },
     async ({ startDate, endDate }) => {
-      const data = await api.get(
+      const data = await api.get<HillScore>(
         "/metrics-service/metrics/hillscore",
         { startDate, endDate },
       );
@@ -178,7 +192,7 @@ export function registerTrainingTools(
     },
     async ({ workout }) => {
       const body = JSON.parse(workout);
-      const data = await api.post("/workout-service/workout", body);
+      const data = await api.post<WorkoutDetail>("/workout-service/workout", body);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );

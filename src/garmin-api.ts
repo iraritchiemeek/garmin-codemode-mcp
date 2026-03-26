@@ -39,6 +39,7 @@ export class GarminApi {
   private accessToken: string;
   private expiresAt: number;
   private displayNameCache: string | null = null;
+  private userProfilePkCache: number | null = null;
   constructor(oauth1Json: string, oauth2Json: string) {
     const o1 = JSON.parse(oauth1Json);
     this.oauth1 = {
@@ -170,13 +171,25 @@ export class GarminApi {
     return this.request<T>("POST", path, query, body);
   }
 
+  private async getUserSettings(): Promise<{
+    userData: { displayName: string };
+    id: number;
+  }> {
+    return this.get("/userprofile-service/userprofile/user-settings");
+  }
+
   async getDisplayName(): Promise<string> {
     if (this.displayNameCache) return this.displayNameCache;
-    const settings = await this.get<{ userData: { displayName: string } }>(
-      "/userprofile-service/userprofile/user-settings",
-    );
+    const settings = await this.getUserSettings();
     this.displayNameCache = settings.userData.displayName;
     return this.displayNameCache;
+  }
+
+  async getUserProfilePk(): Promise<number> {
+    if (this.userProfilePkCache) return this.userProfilePkCache;
+    const settings = await this.getUserSettings();
+    this.userProfilePkCache = settings.id;
+    return this.userProfilePkCache;
   }
 
   async delete<T = unknown>(
