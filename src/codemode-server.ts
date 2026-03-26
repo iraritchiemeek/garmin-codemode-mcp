@@ -85,6 +85,28 @@ Each codemode.* call is an API round-trip. Minimise the number of calls:
 4. **Compute in code**: Calculate aggregations (median, average, trends, rankings) inside the function. Return the final answer, not intermediate data.
 5. **Filter server-side first**: Use available parameters (activityType, date ranges, limits) to reduce the dataset before processing in code.
 
+## Activity types
+
+Types are hierarchical — querying a parent includes all children.
+
+| Parent | Children |
+|--------|----------|
+| running | street_running, trail_running, track_running, treadmill_running, indoor_running, virtual_run, obstacle_run, ultra_run |
+| cycling | road_biking, mountain_biking, indoor_cycling, gravel_cycling, virtual_ride, cyclocross, downhill_biking, track_cycling, recumbent_cycling, bmx, e_bike_mountain, e_bike_fitness, hand_cycling, enduro_mtb |
+| swimming | lap_swimming, open_water_swimming |
+| walking | casual_walking, speed_walking |
+| hiking | rucking |
+| fitness_equipment | strength_training, elliptical, stair_climbing, indoor_rowing, pilates, yoga, indoor_climbing, bouldering, hiit, dance, jump_rope, mobility |
+| winter_sports | resort_skiing, resort_snowboarding, backcountry_skiing, backcountry_snowboarding, cross_country_skiing_ws, skate_skiing_ws, snow_shoe_ws, skating_ws, snowmobiling_ws |
+| diving | single_gas_diving, multi_gas_diving, gauge_diving, apnea_diving, apnea_hunting, ccr_diving, pool_apnea |
+| water_sports | kayaking_v2, rowing_v2, sailing_v2, surfing_v2, stand_up_paddleboarding_v2, kiteboarding_v2, windsurfing_v2, snorkeling |
+| team_sports | soccer, basketball, baseball, rugby, cricket, volleyball, ice_hockey, field_hockey, lacrosse, american_football, softball, ultimate_disc |
+| racket_sports | tennis_v2, pickleball, badminton, squash, table_tennis, racquetball, paddelball, platform_tennis |
+| multi_sport | (triathlon / duathlon parent) |
+| other | breathwork, meditation, golf, boxing, mixed_martial_arts, rock_climbing, disc_golf, archery, mountaineering |
+
+Use the parent type for broad queries (e.g. "swimming" for all pool + open water). Use a child type only when you need a specific sub-type.
+
 ## Return values
 
 Return a structured object with the final answer. Include units in field names (e.g. distanceKm, durationMinutes). For analysis questions, return both the answer and supporting data.
@@ -125,7 +147,10 @@ export async function codeMcpServer(options: {
         name: toolName,
         arguments: args as Record<string, unknown>,
       });
-      return unwrapMcpResponse(result); // <-- the fix
+      const unwrapped = unwrapMcpResponse(result);
+      // Ensure arrays survive structured-clone into the sandbox as true Arrays
+      // so .map(), .filter(), .reduce() etc. work without Array.from()
+      return Array.isArray(unwrapped) ? [...unwrapped] : unwrapped;
     };
   }
 
