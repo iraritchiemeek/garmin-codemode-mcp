@@ -147,6 +147,21 @@ export async function codeMcpServer(options: {
         name: toolName,
         arguments: args as Record<string, unknown>,
       });
+
+      // Throw on MCP tool errors so sandbox code gets a clear exception
+      // instead of silently receiving a string error message as the return value
+      const mcpResult = result as {
+        content: Array<{ type: string; text?: string }>;
+        isError?: boolean;
+      };
+      if (mcpResult.isError) {
+        const msg = mcpResult.content
+          .filter((c) => c.type === "text" && c.text)
+          .map((c) => c.text)
+          .join("\n") || "Tool call failed";
+        throw new Error(msg);
+      }
+
       const unwrapped = unwrapMcpResponse(result);
       // Ensure arrays survive structured-clone into the sandbox as true Arrays
       // so .map(), .filter(), .reduce() etc. work without Array.from()
