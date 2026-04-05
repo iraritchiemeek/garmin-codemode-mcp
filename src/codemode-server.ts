@@ -76,6 +76,8 @@ Write an async arrow function in JavaScript that returns the final, processed re
 
 ## Efficiency rules
 
+Aim to answer the user's question in a single \`code\` tool invocation. Chain multiple codemode.* calls within one invocation rather than making separate tool calls — e.g. fetch a list, extract an ID, then fetch details, all in one function.
+
 Each codemode.* call is an API round-trip. Minimise the number of calls:
 
 1. **One-shot**: Fetch all the data you need, then filter, transform, and compute the answer in code. Never return raw data for the LLM to process in a follow-up call.

@@ -111,7 +111,7 @@ async function verify(): Promise<void> {
 
   // Test API call
   const response = await fetch(
-    "https://connectapi.garmin.com/userprofile-service/userprofile/user-settings",
+    "https://connectapi.garmin.com/userprofile-service/socialProfile",
     {
       headers: {
         Authorization: `Bearer ${oauth2.access_token}`,
@@ -122,9 +122,9 @@ async function verify(): Promise<void> {
 
   if (response.ok) {
     const data = (await response.json()) as {
-      userData: { displayName: string };
+      fullName: string;
     };
-    console.log(`Authenticated as: ${data.userData.displayName}`);
+    console.log(`Authenticated as: ${data.fullName}`);
   } else {
     console.log(
       `Token may be invalid (API returned ${response.status}). Run \`pnpm auth\` to re-authenticate.`,
