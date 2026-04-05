@@ -13,6 +13,34 @@ import type {
   ActivityTypeEntry,
 } from "../types/garmin-responses.js";
 
+/**
+ * The Garmin API only accepts parent activity type keys as filters.
+ * If a child type is passed, map it to the parent so the query succeeds.
+ */
+const CHILD_TO_PARENT: Record<string, string> = {
+  street_running: "running", trail_running: "running", track_running: "running",
+  treadmill_running: "running", indoor_running: "running", virtual_run: "running",
+  obstacle_run: "running", ultra_run: "running",
+  road_biking: "cycling", mountain_biking: "cycling", indoor_cycling: "cycling",
+  gravel_cycling: "cycling", virtual_ride: "cycling", cyclocross: "cycling",
+  downhill_biking: "cycling", track_cycling: "cycling", recumbent_cycling: "cycling",
+  bmx: "cycling", e_bike_mountain: "cycling", e_bike_fitness: "cycling",
+  hand_cycling: "cycling", enduro_mtb: "cycling",
+  lap_swimming: "swimming", open_water_swimming: "swimming",
+  casual_walking: "walking", speed_walking: "walking",
+  rucking: "hiking",
+  strength_training: "fitness_equipment", elliptical: "fitness_equipment",
+  stair_climbing: "fitness_equipment", indoor_rowing: "fitness_equipment",
+  pilates: "fitness_equipment", yoga: "fitness_equipment",
+  indoor_climbing: "fitness_equipment", bouldering: "fitness_equipment",
+  hiit: "fitness_equipment", dance: "fitness_equipment",
+  jump_rope: "fitness_equipment", mobility: "fitness_equipment",
+};
+
+function resolveParentType(activityType: string): string {
+  return CHILD_TO_PARENT[activityType] ?? activityType;
+}
+
 export function registerActivityTools(
   server: McpServer,
   api: GarminApi,
@@ -24,8 +52,9 @@ export function registerActivityTools(
         "Search Garmin Connect activities. Returns an array of activity summaries " +
         "including activityId, activityName, activityType (with typeKey), startTimeLocal, " +
         "duration, distance (in meters), averageHR, maxHR, and calories. " +
-        "Note: 'running' and 'trail_running' are separate activity types — " +
-        "query both if you want all runs. Omit activityType to get all activities.",
+        "Filtering by a parent type (e.g. 'running') includes all children " +
+        "(trail_running, street_running, etc.). Child types are automatically " +
+        "mapped to their parent. Omit activityType to get all activities.",
       inputSchema: {
         start: z
           .number()
@@ -44,8 +73,8 @@ export function registerActivityTools(
           .string()
           .optional()
           .describe(
-            "Filter by activity type key. Types are specific: 'running' excludes 'trail_running', " +
-            "'cycling' excludes 'mountain_biking', etc. Use get_activity_types for the full list.",
+            "Filter by activity type key. Use parent types: 'running', 'cycling', 'swimming', etc. " +
+            "Child types (e.g. 'trail_running') are auto-mapped to the parent.",
           ),
       },
     },
@@ -53,7 +82,7 @@ export function registerActivityTools(
       const query: Record<string, string | number> = {};
       if (start !== undefined) query.start = start;
       if (limit !== undefined) query.limit = limit;
-      if (activityType) query.activityType = activityType;
+      if (activityType) query.activityType = resolveParentType(activityType);
 
       const data = await api.get<ActivitySummary[]>(
         "/activitylist-service/activities/search/activities",
@@ -275,7 +304,8 @@ export function registerActivityTools(
           .string()
           .optional()
           .describe(
-            "Filter by activity type key. Types are specific: 'running' excludes 'trail_running', etc.",
+            "Filter by activity type key. Use parent types: 'running', 'cycling', 'swimming', etc. " +
+            "Child types (e.g. 'trail_running') are auto-mapped to the parent.",
           ),
       },
     },
@@ -284,7 +314,7 @@ export function registerActivityTools(
         startDate,
         endDate,
       };
-      if (activityType) query.activityType = activityType;
+      if (activityType) query.activityType = resolveParentType(activityType);
 
       const data = await api.get<ActivitySummary[]>(
         "/activitylist-service/activities/search/activities",

@@ -163,6 +163,38 @@ export class GarminApi {
     return this.request<T>("GET", path, query);
   }
 
+  /** GET that returns raw text + byte length — use for debugging large responses. */
+  async getRawText(
+    path: string,
+    query?: Record<string, string | number>,
+  ): Promise<{ text: string; byteLength: number }> {
+    const token = await this.ensureValidToken();
+    const url = new URL(path, CONNECT_API_BASE);
+    if (query) {
+      for (const [key, value] of Object.entries(query)) {
+        if (value !== undefined) {
+          url.searchParams.set(key, String(value));
+        }
+      }
+    }
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "User-Agent": USER_AGENT,
+      },
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(
+        `Garmin API ${response.status} ${response.statusText}: ${text}`,
+      );
+    }
+    const text = await response.text();
+    return { text, byteLength: new TextEncoder().encode(text).length };
+  }
+
   async post<T = unknown>(
     path: string,
     body?: unknown,

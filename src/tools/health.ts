@@ -103,10 +103,16 @@ export function registerHealthTools(
       inputSchema: { date: dateParam },
     },
     async ({ date }) => {
-      const data = await api.get<TrainingStatus>(
-        `/metrics-service/metrics/trainingstatus/aggregated/${date}`,
-      );
-      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+      const path = `/metrics-service/metrics/trainingstatus/aggregated/${date}`;
+      console.log(`[get_training_status] Fetching ${path}`);
+      const { text, byteLength } = await api.getRawText(path);
+      console.log(`[get_training_status] Response: ${byteLength} bytes`);
+      const data = JSON.parse(text) as TrainingStatus;
+      const topLevelKeys = Object.keys(data);
+      console.log(`[get_training_status] Top-level keys: ${topLevelKeys.join(", ")}`);
+      const pretty = JSON.stringify(data, null, 2);
+      console.log(`[get_training_status] Serialized: ${pretty.length} chars`);
+      return { content: [{ type: "text", text: pretty }] };
     },
   );
 }
