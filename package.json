@@ -10,14 +10,16 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "auth": "tsx cli/auth.ts",
+    "auth:verify": "tsx cli/auth.ts --verify"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.18.3",
   "dependencies": {
-    "@cloudflare/codemode": "^0.3.1",
+    "@cloudflare/codemode": "^0.3.3",
     "@modelcontextprotocol/sdk": "1.26.0",
     "agents": "^0.8.5",
     "ai": "^6.0.138",
@@ -27,6 +29,8 @@
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.13.4",
     "@cloudflare/workers-types": "^4.20260317.1",
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.1",
     "wrangler": "^4.77.0"

@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+- `pnpm auth` — authenticate with Garmin Connect (email/password + MFA)
+- `pnpm auth:verify` — check if saved tokens are still valid
 - `pnpm dev` — local dev server via Wrangler
 - `pnpm deploy` — deploy to Cloudflare Workers
 - `pnpm typecheck` — run `tsc --noEmit`

@@ -1,6 +1,12 @@
 /**
- * Local patched codeMcpServer — unwraps MCP content responses before they
- * reach the sandbox. Drop this file when cloudflare/agents#1203 is fixed.
+ * Thin wrapper around the upstream codeMcpServer that injects a
+ * Garmin-specific CODE_DESCRIPTION with activity type hierarchy,
+ * efficiency rules, and return value guidance.
+ *
+ * The upstream codeMcpServer hardcodes a generic description with no
+ * way to customise it, so we replicate the wiring here using the same
+ * exported utilities (generateTypesFromJsonSchema, sanitizeToolName,
+ * DynamicWorkerExecutor) from @cloudflare/codemode.
  */
 import {
   sanitizeToolName,
@@ -11,7 +17,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { z } from "zod";
-import { outputSchemas } from "./types/output-schemas.js";
 
 const CHARS_PER_TOKEN = 4;
 const MAX_TOKENS = 6_000;
@@ -30,28 +35,33 @@ function formatError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function unwrapMcpResponse(result: unknown): unknown {
+/**
+ * Unwrap an MCP CallToolResult so sandbox code sees plain values.
+ * Mirrors the upstream unwrapMcpResult from @cloudflare/codemode 0.3.3.
+ */
+function unwrapMcpResult(result: unknown): unknown {
+  const r = result as Record<string, unknown>;
+  if ("toolResult" in r) return r.toolResult;
+  if (r.isError) {
+    const content = r.content as Array<{ type: string; text?: string }>;
+    const msg =
+      content
+        .filter((c) => c.type === "text" && c.text)
+        .map((c) => c.text)
+        .join("\n") || "Tool call failed";
+    throw new Error(msg);
+  }
+  if (r.structuredContent != null) return r.structuredContent;
+  const content = r.content as Array<{ type: string; text?: string }>;
   if (
-    result &&
-    typeof result === "object" &&
-    "content" in result &&
-    Array.isArray(
-      (result as { content: unknown[] }).content,
-    )
+    content.length > 0 &&
+    content.every((c) => c.type === "text")
   ) {
-    const content = (
-      result as { content: Array<{ type: string; text?: string }> }
-    ).content;
-    if (
-      content.length === 1 &&
-      content[0].type === "text" &&
-      typeof content[0].text === "string"
-    ) {
-      try {
-        return JSON.parse(content[0].text);
-      } catch {
-        return content[0].text;
-      }
+    const text = content.map((c) => c.text ?? "").join("\n");
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
     }
   }
   return result;
@@ -128,13 +138,12 @@ export async function codeMcpServer(options: {
 
   const toolDescriptors: Record<
     string,
-    { description?: string; inputSchema: Record<string, unknown>; outputSchema?: Record<string, unknown> }
+    { description?: string; inputSchema: Record<string, unknown> }
   > = {};
   for (const tool of tools) {
     toolDescriptors[tool.name] = {
       description: tool.description,
       inputSchema: tool.inputSchema,
-      outputSchema: outputSchemas[tool.name],
     };
   }
   const types = generateTypesFromJsonSchema(toolDescriptors);
@@ -143,29 +152,12 @@ export async function codeMcpServer(options: {
   for (const tool of tools) {
     const toolName = tool.name;
     fns[toolName] = async (args: unknown) => {
-      const result = await client.callTool({
-        name: toolName,
-        arguments: args as Record<string, unknown>,
-      });
-
-      // Throw on MCP tool errors so sandbox code gets a clear exception
-      // instead of silently receiving a string error message as the return value
-      const mcpResult = result as {
-        content: Array<{ type: string; text?: string }>;
-        isError?: boolean;
-      };
-      if (mcpResult.isError) {
-        const msg = mcpResult.content
-          .filter((c) => c.type === "text" && c.text)
-          .map((c) => c.text)
-          .join("\n") || "Tool call failed";
-        throw new Error(msg);
-      }
-
-      const unwrapped = unwrapMcpResponse(result);
-      // Ensure arrays survive structured-clone into the sandbox as true Arrays
-      // so .map(), .filter(), .reduce() etc. work without Array.from()
-      return Array.isArray(unwrapped) ? [...unwrapped] : unwrapped;
+      return unwrapMcpResult(
+        await client.callTool({
+          name: toolName,
+          arguments: args as Record<string, unknown>,
+        }),
+      );
     };
   }
 

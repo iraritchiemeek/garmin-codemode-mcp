@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { DynamicWorkerExecutor } from "@cloudflare/codemode";
-import { codeMcpServer } from "./codemode-server.js"; // patched: cloudflare/agents#1203
+import { codeMcpServer } from "./codemode-server.js";
 import { createMcpHandler } from "agents/mcp";
 import { GarminApi } from "./garmin-api.js";
 import { registerActivityTools } from "./tools/activities.js";
