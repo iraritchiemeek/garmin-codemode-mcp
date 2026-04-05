@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { GarminApi } from "../garmin-api.js";
+import { type GarminApi, apiPath } from "../garmin-api.js";
 import type {
   MaxMetricsEntry,
   StressData,
@@ -37,7 +37,7 @@ export function registerTrendsTools(server: McpServer, api: GarminApi): void {
     },
     async ({ date }) => {
       const data = await api.get<MaxMetricsEntry[]>(
-        `/metrics-service/metrics/maxmet/daily/${date}/${date}`,
+        apiPath`/metrics-service/metrics/maxmet/daily/${date}/${date}`,
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
@@ -53,7 +53,9 @@ export function registerTrendsTools(server: McpServer, api: GarminApi): void {
       inputSchema: { date: dateParam },
     },
     async ({ date }) => {
-      const data = await api.get<StressData>(`/wellness-service/wellness/dailyStress/${date}`);
+      const data = await api.get<StressData>(
+        apiPath`/wellness-service/wellness/dailyStress/${date}`,
+      );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -91,7 +93,7 @@ export function registerTrendsTools(server: McpServer, api: GarminApi): void {
     },
     async ({ startDate, endDate }) => {
       const data = await api.get<DailyStepsEntry[]>(
-        `/usersummary-service/stats/steps/daily/${startDate}/${endDate}`,
+        apiPath`/usersummary-service/stats/steps/daily/${startDate}/${endDate}`,
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
@@ -106,7 +108,9 @@ export function registerTrendsTools(server: McpServer, api: GarminApi): void {
       inputSchema: { date: dateParam },
     },
     async ({ date }) => {
-      const data = await api.get<IntensityMinutes>(`/wellness-service/wellness/daily/im/${date}`);
+      const data = await api.get<IntensityMinutes>(
+        apiPath`/wellness-service/wellness/daily/im/${date}`,
+      );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );

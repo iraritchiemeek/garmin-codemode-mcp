@@ -29,12 +29,25 @@ async function hmacSha1(baseString: string, key: string): Promise<string> {
   return btoa(String.fromCharCode(...new Uint8Array(signature)));
 }
 
+/** Tagged template that URI-encodes all interpolated values to prevent path traversal. */
+export function apiPath(strings: TemplateStringsArray, ...values: (string | number)[]): string {
+  let result = "";
+  for (let i = 0; i < strings.length; i++) {
+    result += strings[i];
+    if (i < values.length) {
+      result += encodeURIComponent(String(values[i]));
+    }
+  }
+  return result;
+}
+
 export class GarminApi {
   private oauth1: OAuth1Credentials;
   private accessToken: string;
   private expiresAt: number;
   private displayNameCache: string | null = null;
   private userProfilePkCache: number | null = null;
+  private refreshPromise: Promise<void> | null = null;
   constructor(oauth1Json: string, oauth2Json: string) {
     const o1 = JSON.parse(oauth1Json);
     this.oauth1 = {
@@ -100,7 +113,12 @@ export class GarminApi {
 
   private async ensureValidToken(): Promise<string> {
     if (this.isExpired()) {
-      await this.refreshToken();
+      if (!this.refreshPromise) {
+        this.refreshPromise = this.refreshToken().finally(() => {
+          this.refreshPromise = null;
+        });
+      }
+      await this.refreshPromise;
     }
     return this.accessToken;
   }

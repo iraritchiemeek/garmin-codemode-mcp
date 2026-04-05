@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { GarminApi } from "../garmin-api.js";
+import { type GarminApi, apiPath } from "../garmin-api.js";
 import type {
   TrainingPlansResponse,
   WorkoutSummary,
@@ -49,7 +49,7 @@ export function registerTrainingTools(server: McpServer, api: GarminApi): void {
       },
     },
     async ({ planId }) => {
-      const data = await api.get(`/trainingplan-service/trainingplan/phased/${planId}`);
+      const data = await api.get(apiPath`/trainingplan-service/trainingplan/phased/${planId}`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -94,7 +94,7 @@ export function registerTrainingTools(server: McpServer, api: GarminApi): void {
       },
     },
     async ({ workoutId }) => {
-      const data = await api.get<WorkoutDetail>(`/workout-service/workout/${workoutId}`);
+      const data = await api.get<WorkoutDetail>(apiPath`/workout-service/workout/${workoutId}`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -111,7 +111,7 @@ export function registerTrainingTools(server: McpServer, api: GarminApi): void {
     async () => {
       const displayName = await api.getDisplayName();
       const data = await api.get<RacePredictions>(
-        `/metrics-service/metrics/racepredictions/latest/${displayName}`,
+        apiPath`/metrics-service/metrics/racepredictions/latest/${displayName}`,
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
@@ -182,7 +182,15 @@ export function registerTrainingTools(server: McpServer, api: GarminApi): void {
       },
     },
     async ({ workout }) => {
-      const body = JSON.parse(workout);
+      let body: unknown;
+      try {
+        body = JSON.parse(workout);
+      } catch (e) {
+        return {
+          content: [{ type: "text" as const, text: `Invalid JSON: ${(e as Error).message}` }],
+          isError: true,
+        };
+      }
       const data = await api.post<WorkoutDetail>("/workout-service/workout", body);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
@@ -203,7 +211,7 @@ export function registerTrainingTools(server: McpServer, api: GarminApi): void {
       },
     },
     async ({ workoutId, date }) => {
-      const data = await api.post(`/workout-service/schedule/${workoutId}`, { date });
+      const data = await api.post(apiPath`/workout-service/schedule/${workoutId}`, { date });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -217,7 +225,7 @@ export function registerTrainingTools(server: McpServer, api: GarminApi): void {
       },
     },
     async ({ workoutId }) => {
-      await api.delete(`/workout-service/workout/${workoutId}`);
+      await api.delete(apiPath`/workout-service/workout/${workoutId}`);
       return {
         content: [{ type: "text", text: JSON.stringify({ deleted: true, workoutId }) }],
       };

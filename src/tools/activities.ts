@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { GarminApi } from "../garmin-api.js";
+import { type GarminApi, apiPath } from "../garmin-api.js";
 import type {
   ActivitySummary,
   ActivityDetail,
@@ -124,7 +124,7 @@ export function registerActivityTools(server: McpServer, api: GarminApi): void {
       },
     },
     async ({ activityId }) => {
-      const data = await api.get<ActivityDetail>(`/activity-service/activity/${activityId}`);
+      const data = await api.get<ActivityDetail>(apiPath`/activity-service/activity/${activityId}`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -159,7 +159,7 @@ export function registerActivityTools(server: McpServer, api: GarminApi): void {
       if (maxPolylineSize !== undefined) query.maxPolylineSize = maxPolylineSize;
 
       const data = await api.get<ActivityMetrics>(
-        `/activity-service/activity/${activityId}/details`,
+        apiPath`/activity-service/activity/${activityId}/details`,
         query,
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -178,7 +178,9 @@ export function registerActivityTools(server: McpServer, api: GarminApi): void {
       },
     },
     async ({ activityId }) => {
-      const data = await api.get<ActivitySplits>(`/activity-service/activity/${activityId}/splits`);
+      const data = await api.get<ActivitySplits>(
+        apiPath`/activity-service/activity/${activityId}/splits`,
+      );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -196,7 +198,7 @@ export function registerActivityTools(server: McpServer, api: GarminApi): void {
     },
     async ({ activityId }) => {
       const data = await api.get<HrZone[]>(
-        `/activity-service/activity/${activityId}/hrTimeInZones`,
+        apiPath`/activity-service/activity/${activityId}/hrTimeInZones`,
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
@@ -216,7 +218,7 @@ export function registerActivityTools(server: McpServer, api: GarminApi): void {
     },
     async ({ activityId }) => {
       const data = await api.get<ActivityWeather>(
-        `/activity-service/activity/${activityId}/weather`,
+        apiPath`/activity-service/activity/${activityId}/weather`,
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
@@ -275,7 +277,7 @@ export function registerActivityTools(server: McpServer, api: GarminApi): void {
       },
     },
     async ({ gearUuid }) => {
-      const data = await api.get<GearStats>(`/gear-service/gear/stats/${gearUuid}`);
+      const data = await api.get<GearStats>(apiPath`/gear-service/gear/stats/${gearUuid}`);
       return {
         content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
       };

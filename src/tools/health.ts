@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import type { GarminApi } from "../garmin-api.js";
+import { type GarminApi, apiPath } from "../garmin-api.js";
 import type {
   SleepData,
   HeartRateData,
@@ -28,7 +28,7 @@ export function registerHealthTools(server: McpServer, api: GarminApi): void {
     async ({ date }) => {
       const displayName = await api.getDisplayName();
       const data = await api.get<SleepData>(
-        `/wellness-service/wellness/dailySleepData/${displayName}`,
+        apiPath`/wellness-service/wellness/dailySleepData/${displayName}`,
         { date, nonSleepBufferMinutes: 60 },
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -47,7 +47,7 @@ export function registerHealthTools(server: McpServer, api: GarminApi): void {
     async ({ date }) => {
       const displayName = await api.getDisplayName();
       const data = await api.get<HeartRateData>(
-        `/wellness-service/wellness/dailyHeartRate/${displayName}`,
+        apiPath`/wellness-service/wellness/dailyHeartRate/${displayName}`,
         { date },
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -64,7 +64,7 @@ export function registerHealthTools(server: McpServer, api: GarminApi): void {
       inputSchema: { date: dateParam },
     },
     async ({ date }) => {
-      const data = await api.get<HrvData>(`/hrv-service/hrv/${date}`);
+      const data = await api.get<HrvData>(apiPath`/hrv-service/hrv/${date}`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -82,7 +82,7 @@ export function registerHealthTools(server: McpServer, api: GarminApi): void {
     },
     async ({ date }) => {
       const data = await api.get<TrainingReadinessEntry[]>(
-        `/metrics-service/metrics/trainingreadiness/${date}`,
+        apiPath`/metrics-service/metrics/trainingreadiness/${date}`,
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
@@ -100,7 +100,7 @@ export function registerHealthTools(server: McpServer, api: GarminApi): void {
       inputSchema: { date: dateParam },
     },
     async ({ date }) => {
-      const path = `/metrics-service/metrics/trainingstatus/aggregated/${date}`;
+      const path = apiPath`/metrics-service/metrics/trainingstatus/aggregated/${date}`;
       console.log(`[get_training_status] Fetching ${path}`);
       const { text, byteLength } = await api.getRawText(path);
       console.log(`[get_training_status] Response: ${byteLength} bytes`);
