@@ -24,10 +24,7 @@ const endDateParam = z
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .describe("End date in YYYY-MM-DD format");
 
-export function registerTrendsTools(
-  server: McpServer,
-  api: GarminApi,
-): void {
+export function registerTrendsTools(server: McpServer, api: GarminApi): void {
   server.registerTool(
     "get_max_metrics",
     {
@@ -56,9 +53,7 @@ export function registerTrendsTools(
       inputSchema: { date: dateParam },
     },
     async ({ date }) => {
-      const data = await api.get<StressData>(
-        `/wellness-service/wellness/dailyStress/${date}`,
-      );
+      const data = await api.get<StressData>(`/wellness-service/wellness/dailyStress/${date}`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -111,9 +106,7 @@ export function registerTrendsTools(
       inputSchema: { date: dateParam },
     },
     async ({ date }) => {
-      const data = await api.get<IntensityMinutes>(
-        `/wellness-service/wellness/daily/im/${date}`,
-      );
+      const data = await api.get<IntensityMinutes>(`/wellness-service/wellness/daily/im/${date}`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );

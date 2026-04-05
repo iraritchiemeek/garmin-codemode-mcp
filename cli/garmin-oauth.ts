@@ -9,12 +9,12 @@ const PREAUTHORIZED_URL =
 const EXCHANGE_URL =
   "https://connectapi.garmin.com/oauth-service/oauth/exchange/user/2.0";
 
-export interface OAuth1Result {
+interface OAuth1Result {
   oauth_token: string;
   oauth_token_secret: string;
 }
 
-export interface OAuth2Result {
+interface OAuth2Result {
   access_token: string;
   expires_at: number;
 }

@@ -20,10 +20,7 @@ const endDateParam = z
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .describe("End date in YYYY-MM-DD format");
 
-export function registerTrainingTools(
-  server: McpServer,
-  api: GarminApi,
-): void {
+export function registerTrainingTools(server: McpServer, api: GarminApi): void {
   // --- Read tools ---
 
   server.registerTool(
@@ -52,9 +49,7 @@ export function registerTrainingTools(
       },
     },
     async ({ planId }) => {
-      const data = await api.get(
-        `/trainingplan-service/trainingplan/phased/${planId}`,
-      );
+      const data = await api.get(`/trainingplan-service/trainingplan/phased/${planId}`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -67,12 +62,7 @@ export function registerTrainingTools(
         "element has workoutId, workoutName, sportType, estimatedDurationInSecs, " +
         "estimatedDistanceInMeters, and shared. Use before get_workout for full details.",
       inputSchema: {
-        start: z
-          .number()
-          .int()
-          .min(0)
-          .optional()
-          .describe("Pagination offset (default 0)"),
+        start: z.number().int().min(0).optional().describe("Pagination offset (default 0)"),
         limit: z
           .number()
           .int()
@@ -144,10 +134,11 @@ export function registerTrainingTools(
       },
     },
     async ({ startDate, endDate, aggregation }) => {
-      const data = await api.get<EnduranceScore>(
-        "/metrics-service/metrics/endurancescore/stats",
-        { startDate, endDate, aggregation: aggregation ?? "weekly" },
-      );
+      const data = await api.get<EnduranceScore>("/metrics-service/metrics/endurancescore/stats", {
+        startDate,
+        endDate,
+        aggregation: aggregation ?? "weekly",
+      });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -165,10 +156,10 @@ export function registerTrainingTools(
       },
     },
     async ({ startDate, endDate }) => {
-      const data = await api.get<HillScore>(
-        "/metrics-service/metrics/hillscore",
-        { startDate, endDate },
-      );
+      const data = await api.get<HillScore>("/metrics-service/metrics/hillscore", {
+        startDate,
+        endDate,
+      });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -212,10 +203,7 @@ export function registerTrainingTools(
       },
     },
     async ({ workoutId, date }) => {
-      const data = await api.post(
-        `/workout-service/schedule/${workoutId}`,
-        { date },
-      );
+      const data = await api.post(`/workout-service/schedule/${workoutId}`, { date });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -223,9 +211,7 @@ export function registerTrainingTools(
   server.registerTool(
     "delete_workout",
     {
-      description:
-        "Delete a workout from Garmin Connect. This is permanent and cannot " +
-        "be undone.",
+      description: "Delete a workout from Garmin Connect. This is permanent and cannot be undone.",
       inputSchema: {
         workoutId: z.string().describe("The workout ID to delete"),
       },

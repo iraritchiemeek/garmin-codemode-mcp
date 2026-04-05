@@ -1,0 +1,14 @@
+{
+  "plugins": ["typescript", "import", "unicorn", "promise"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "no-unused-vars": "off",
+    "no-unused-expressions": "off",
+    "import/no-named-as-default": "off"
+  },
+  "ignorePatterns": ["node_modules", "dist", ".wrangler", "worker-configuration.d.ts"]
+}

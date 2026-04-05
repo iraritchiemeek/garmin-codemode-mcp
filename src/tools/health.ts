@@ -14,10 +14,7 @@ const dateParam = z
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .describe("Date in YYYY-MM-DD format");
 
-export function registerHealthTools(
-  server: McpServer,
-  api: GarminApi,
-): void {
+export function registerHealthTools(server: McpServer, api: GarminApi): void {
   server.registerTool(
     "get_sleep_data",
     {

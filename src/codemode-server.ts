@@ -24,9 +24,7 @@ const MAX_CHARS = MAX_TOKENS * CHARS_PER_TOKEN;
 
 function truncateResponse(content: unknown): string {
   const text =
-    typeof content === "string"
-      ? content
-      : (JSON.stringify(content, null, 2) ?? "undefined");
+    typeof content === "string" ? content : (JSON.stringify(content, null, 2) ?? "undefined");
   if (text.length <= MAX_CHARS) return text;
   return `${text.slice(0, MAX_CHARS)}\n\n--- TRUNCATED ---\nResponse was ~${Math.ceil(text.length / CHARS_PER_TOKEN).toLocaleString()} tokens (limit: ${MAX_TOKENS.toLocaleString()}). Use more specific queries to reduce response size.`;
 }
@@ -53,10 +51,7 @@ function unwrapMcpResult(result: unknown): unknown {
   }
   if (r.structuredContent != null) return r.structuredContent;
   const content = r.content as Array<{ type: string; text?: string }>;
-  if (
-    content.length > 0 &&
-    content.every((c) => c.type === "text")
-  ) {
+  if (content.length > 0 && content.every((c) => c.type === "text")) {
     const text = content.map((c) => c.text ?? "").join("\n");
     try {
       return JSON.parse(text);
@@ -128,8 +123,7 @@ export async function codeMcpServer(options: {
   executor: DynamicWorkerExecutor;
 }): Promise<McpServer> {
   const { server, executor } = options;
-  const [clientTransport, serverTransport] =
-    InMemoryTransport.createLinkedPair();
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   const client = new Client({ name: "codemode-proxy", version: "1.0.0" });
   await client.connect(clientTransport);
@@ -164,15 +158,10 @@ export async function codeMcpServer(options: {
   const firstTool = tools[0];
   let example = "";
   if (firstTool) {
-    const props =
-      (firstTool.inputSchema.properties as Record<
-        string,
-        { type?: string }
-      >) ?? {};
+    const props = (firstTool.inputSchema.properties as Record<string, { type?: string }>) ?? {};
     const parts: string[] = [];
     for (const [key, prop] of Object.entries(props)) {
-      if (prop.type === "number" || prop.type === "integer")
-        parts.push(`${key}: 0`);
+      if (prop.type === "number" || prop.type === "integer") parts.push(`${key}: 0`);
       else if (prop.type === "boolean") parts.push(`${key}: true`);
       else parts.push(`${key}: "..."`);
     }
@@ -180,10 +169,7 @@ export async function codeMcpServer(options: {
     example = `Example: async () => { const r = await codemode.${sanitizeToolName(firstTool.name)}(${args}); return r; }`;
   }
 
-  const description = CODE_DESCRIPTION.replace("{{types}}", types).replace(
-    "{{example}}",
-    example,
-  );
+  const description = CODE_DESCRIPTION.replace("{{types}}", types).replace("{{example}}", example);
 
   const codemodeServer = new McpServer({ name: "codemode", version: "1.0.0" });
   codemodeServer.registerTool(
@@ -196,26 +182,18 @@ export async function codeMcpServer(options: {
     },
     async ({ code }) => {
       try {
-        const result = await executor.execute(code, [
-          { name: "codemode", fns },
-        ]);
+        const result = await executor.execute(code, [{ name: "codemode", fns }]);
         if (result.error)
           return {
-            content: [
-              { type: "text" as const, text: `Error: ${result.error}` },
-            ],
+            content: [{ type: "text" as const, text: `Error: ${result.error}` }],
             isError: true,
           };
         return {
-          content: [
-            { type: "text" as const, text: truncateResponse(result.result) },
-          ],
+          content: [{ type: "text" as const, text: truncateResponse(result.result) }],
         };
       } catch (error) {
         return {
-          content: [
-            { type: "text" as const, text: `Error: ${formatError(error)}` },
-          ],
+          content: [{ type: "text" as const, text: `Error: ${formatError(error)}` }],
           isError: true,
         };
       }

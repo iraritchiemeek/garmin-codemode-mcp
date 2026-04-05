@@ -1,18 +1,17 @@
 import OAuth from "oauth-1.0a";
 
 const CONNECT_API_BASE = "https://connectapi.garmin.com";
-const EXCHANGE_URL =
-  "https://connectapi.garmin.com/oauth-service/oauth/exchange/user/2.0";
+const EXCHANGE_URL = "https://connectapi.garmin.com/oauth-service/oauth/exchange/user/2.0";
 const CONSUMER_KEY = "fc3e99d2-118c-44b8-8ae3-03370dde24c0";
 const CONSUMER_SECRET = "E08WAR897WEy2knn7aFBrvegVAf0AFdWBBF";
 const USER_AGENT = "GCM-iOS-5.22.1.4";
 
-export interface OAuth1Credentials {
+interface OAuth1Credentials {
   oauth_token: string;
   oauth_token_secret: string;
 }
 
-export interface OAuth2Token {
+interface OAuth2Token {
   access_token: string;
   expires_at: number;
 }
@@ -26,11 +25,7 @@ async function hmacSha1(baseString: string, key: string): Promise<string> {
     false,
     ["sign"],
   );
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    cryptoKey,
-    encoder.encode(baseString),
-  );
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(baseString));
   return btoa(String.fromCharCode(...new Uint8Array(signature)));
 }
 
@@ -91,9 +86,7 @@ export class GarminApi {
 
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(
-        `Token refresh failed ${response.status}: ${body}`,
-      );
+      throw new Error(`Token refresh failed ${response.status}: ${body}`);
     }
 
     const data = (await response.json()) as Record<string, unknown>;
@@ -144,9 +137,7 @@ export class GarminApi {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(
-        `Garmin API ${response.status} ${response.statusText}: ${text}`,
-      );
+      throw new Error(`Garmin API ${response.status} ${response.statusText}: ${text}`);
     }
 
     if (response.status === 204) {
@@ -156,10 +147,7 @@ export class GarminApi {
     return response.json() as Promise<T>;
   }
 
-  async get<T = unknown>(
-    path: string,
-    query?: Record<string, string | number>,
-  ): Promise<T> {
+  async get<T = unknown>(path: string, query?: Record<string, string | number>): Promise<T> {
     return this.request<T>("GET", path, query);
   }
 
@@ -187,9 +175,7 @@ export class GarminApi {
     });
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(
-        `Garmin API ${response.status} ${response.statusText}: ${text}`,
-      );
+      throw new Error(`Garmin API ${response.status} ${response.statusText}: ${text}`);
     }
     const text = await response.text();
     return { text, byteLength: new TextEncoder().encode(text).length };
@@ -224,10 +210,7 @@ export class GarminApi {
     return this.userProfilePkCache;
   }
 
-  async delete<T = unknown>(
-    path: string,
-    query?: Record<string, string | number>,
-  ): Promise<T> {
+  async delete<T = unknown>(path: string, query?: Record<string, string | number>): Promise<T> {
     return this.request<T>("DELETE", path, query);
   }
 }
