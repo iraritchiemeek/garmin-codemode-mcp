@@ -14,7 +14,7 @@ A Cloudflare Worker that exposes Garmin Connect fitness data as an MCP (Model Co
 ### 1. Clone and install
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/iraritchiemeek/garmin-codemode-mcp
 cd garmin-codemode-mcp
 pnpm install
 ```
