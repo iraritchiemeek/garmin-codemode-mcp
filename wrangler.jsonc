@@ -3,5 +3,11 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-03-01",
   "compatibility_flags": ["nodejs_compat"],
-  "worker_loaders": [{ "binding": "LOADER" }]
+  "worker_loaders": [{ "binding": "LOADER" }],
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      "id": "4c1fe0ca704840e5a9d2589653c1be44"
+    }
+  ]
 }
