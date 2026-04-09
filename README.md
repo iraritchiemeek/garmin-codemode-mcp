@@ -62,34 +62,79 @@ Add the server to your project's `.mcp.json` file:
 
 ### Claude Desktop App
 
-Open **Settings > Developer > Edit Config** and add:
+The Claude desktop app connects to remote MCP servers via **custom connectors**, which route through Anthropic's cloud — so the server must be publicly reachable. For the desktop app you'll need to [deploy to Cloudflare](#deploying-to-cloudflare) first; `http://localhost:8787` will not work.
 
-```json
-{
-  "mcpServers": {
-    "garmin-connect": {
-      "type": "url",
-      "url": "http://localhost:8787/mcp"
-    }
-  }
-}
+Once deployed:
+
+1. Open **Settings > Connectors** (or **Customize > Connectors**).
+2. Click **Add custom connector**.
+3. Enter your deployed URL with `/mcp` appended, e.g. `https://garmin-codemode-mcp.<your-subdomain>.workers.dev/mcp`.
+4. Click **Add**, then **Connect** on the new connector and enter the `LOGIN_PASSWORD` you set during deploy.
+
+Note: custom connectors require a paid Claude plan (Pro, Max, Team, or Enterprise). Free accounts are limited to a single connector.
+
+## Deploying to Cloudflare
+
+The Worker can be deployed as a remote MCP server. Remote deployments are gated by a password-based OAuth flow (`src/auth-handler.ts`) so only you can connect clients to it.
+
+### 1. Log in to Cloudflare
+
+```bash
+pnpm wrangler login
 ```
 
-Then restart Claude.
+### 2. Create a KV namespace for OAuth state
+
+The OAuth provider stores authorization grants and tokens in Workers KV. Create the namespace:
+
+```bash
+pnpm wrangler kv namespace create OAUTH_KV
+```
+
+Wrangler prints an `id` — copy it into `wrangler.jsonc` under `kv_namespaces` (replacing the existing placeholder id):
+
+```jsonc
+"kv_namespaces": [
+  { "binding": "OAUTH_KV", "id": "<your-kv-id>" }
+]
+```
+
+### 3. Set secrets
+
+The Worker needs three secrets: your Garmin OAuth 1.0a credentials, an initial OAuth 2.0 access token (the Worker auto-refreshes from here), and a password that gates the remote MCP authorization flow. The first two come from the JSON files written by `pnpm auth` into `~/.garmin-codemode-mcp/`.
+
+```bash
+# Paste the full contents of ~/.garmin-codemode-mcp/oauth1.json
+pnpm wrangler secret put GARMIN_OAUTH1
+
+# Paste the full contents of ~/.garmin-codemode-mcp/oauth2.json
+pnpm wrangler secret put GARMIN_OAUTH2
+
+# Choose a password — clients will enter this to authorize against the remote server
+pnpm wrangler secret put LOGIN_PASSWORD
+```
+
+### 4. Deploy
+
+```bash
+pnpm deploy
+```
+
+Wrangler prints the deployed URL, e.g. `https://garmin-codemode-mcp.<your-subdomain>.workers.dev`. Use this URL with `/mcp` appended when connecting from [Claude Code](#claude-code-cli) or the [Claude desktop app](#claude-desktop-app). On first connect, the client opens an authorization page where you enter `LOGIN_PASSWORD`.
 
 ## Available Tools
 
 Once connected, the server exposes a single `code` tool. The LLM writes JavaScript using typed `codemode.*` methods:
 
-| Method | Description |
-|---|---|
-| `codemode.list_activities(...)` | List activities with filters (type, date range) |
-| `codemode.get_activity(...)` | Get full activity details by ID |
-| `codemode.activity_details(...)` | Get detailed metrics for an activity |
-| `codemode.activity_splits(...)` | Get split data for an activity |
-| `codemode.health(...)` | Get health and wellness metrics |
-| `codemode.trends(...)` | Get trend analysis data |
-| `codemode.training(...)` | Get training status and recommendations |
+| Method                           | Description                                     |
+| -------------------------------- | ----------------------------------------------- |
+| `codemode.list_activities(...)`  | List activities with filters (type, date range) |
+| `codemode.get_activity(...)`     | Get full activity details by ID                 |
+| `codemode.activity_details(...)` | Get detailed metrics for an activity            |
+| `codemode.activity_splits(...)`  | Get split data for an activity                  |
+| `codemode.health(...)`           | Get health and wellness metrics                 |
+| `codemode.trends(...)`           | Get trend analysis data                         |
+| `codemode.training(...)`         | Get training status and recommendations         |
 
 ## Development
 
